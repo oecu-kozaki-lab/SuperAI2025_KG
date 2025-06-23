@@ -65,13 +65,13 @@ search_prop =
   {
     "id": "opt1",
     "prop": "wdt:P31",
-    "pname": "分類",
+    "pname": "Class",
     "optional": true
   },
   {
     "id": "opt2",
     "prop": "wdt:P279",
-    "pname": "上位クラス",
+    "pname": "Super Class",
     "optional": true
   },
   {

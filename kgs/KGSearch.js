@@ -352,7 +352,7 @@ function getSearchPropLabel(p){
 		return "QID";
 	}
 	else if(p=='itemLabel'){
-		return "ラベル";
+		return "Label";
 	}
 
 	//optの処理
@@ -1089,7 +1089,7 @@ function openSPARQLendpoint(endpoint,query){
  */
 function showSearchIng(resultArea){
 	const orgDiv = resultArea.innerHTML;
-	resultArea.innerHTML=orgDiv+'<div id="searching"><h2>検索中...</h2>'
+	resultArea.innerHTML=orgDiv+'<div id="searching"><h2>Searching...</h2>'
 	   + '<div class="flower-spinner"><div class="dots-container">'
 	   +'<div class="bigger-dot"><div class="smaller-dot"></div>'
 	   +'</div></div></div>'+'<br></div>' ;
