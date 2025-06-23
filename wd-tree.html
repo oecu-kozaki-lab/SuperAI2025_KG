@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wikidata Class Hierarchy</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+    <style>
+        #controls {
+            margin: 20px;
+        }
+        #tree {
+            margin: 20px;
+        }
+        #startButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #rootInput, #depthInput {
+            margin-left: 10px;
+            padding: 8px;
+            font-size: 16px;
+            width: 100px;
+        }
+        #timeDisplay {
+            margin-left: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Wikidata-Class Hierarchy-</h1>
+    <div id="controls">
+        <button id="startButton">Start</button>
+        <input id="rootInput" type="text" placeholder="Root ID (ex: Q2095)" size="20">
+        <input id="depthInput" type="number" placeholder="Depth (ex: 3)" min="1" max="10">
+        <span id="timeDisplay"></span>
+    </div>
+    <div id="tree"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
+    <script>
+        // SPARQLクエリを生成する関数
+        function generateSparqlQuery(root, depth) {
+            let baseQuery = `
+                SELECT ?item ?itemLabel ?parent WHERE {
+                    {BIND(wd:${root} AS ?parent)
+                    ?item wdt:P279 ?parent.  # 上位クラスの指定
+                    ?item rdfs:label ?itemLabel.
+                    FILTER(LANG(?itemLabel) = "en")
+                    }`;
+
+            let unionQuery = "";
+            for (let i = 1; i < depth; i++) {
+                const path = Array(i).fill("wdt:P279").join("/");
+                unionQuery += `
+                    UNION {
+                        ?parent ${path} wd:${root} .
+                        ?item wdt:P279 ?parent.  # 上位クラスの指定
+                        ?item rdfs:label ?itemLabel.
+                        FILTER(LANG(?itemLabel) = "en")
+                    }`;
+            }
+
+            return baseQuery + unionQuery + `}`;
+        }
+
+        $(document).ready(function() {
+            $('#startButton').on('click', function() {
+                const root = $('#rootInput').val().trim();
+                const depth = parseInt($('#depthInput').val(), 10) || 1; // デフォルト深さ1
+
+                if (!root) {
+                    alert('ルートIDを入力してください。');
+                    return;
+                }
+
+                // 「生成中」の表示
+                $('#timeDisplay').text('Generating...');
+
+                // 時間計測開始
+                const startTime = performance.now();
+
+                const rootLabelQuery = `
+                    SELECT ?itemLabel WHERE {
+                        BIND(wd:${root} AS ?item)
+                        ?item rdfs:label ?itemLabel.
+                        FILTER(LANG(?itemLabel) = "en")
+                    }
+                `;
+
+                $.getJSON(`https://query.wikidata.org/sparql?query=${encodeURIComponent(rootLabelQuery)}&format=json`, function(labelData) {
+                    let rootLabel = root; // 初期値としてルートID
+                    if (labelData.results.bindings.length > 0) {
+                        rootLabel = labelData.results.bindings[0].itemLabel.value; // ルートノードの名前
+                    }
+
+                    const sparqlQuery = generateSparqlQuery(root, depth);
+                    const endpointUrl = "https://query.wikidata.org/sparql?query="
+                        + encodeURIComponent(sparqlQuery) + "&format=json"
+                        + "&nocache=" + new Date().getTime(); //サーバー側でキャッシュされる可能性を減らす（実用上は外す）
+
+                        $.getJSON(endpointUrl, function(data) {
+                            const treeData = [{
+                                "id": `http://www.wikidata.org/entity/${root}`, // ルートノードのID
+                                "parent": "#", // ルートノードはツリーのトップ
+                                "text": rootLabel, // ルートノードのラベル
+                                "url": `http://www.wikidata.org/entity/${root}` // Wikidataエンティティへのリンク
+                            }];
+
+                            // 子ノードをtreeDataに追加
+                            treeData.push(...data.results.bindings.map(function(result) {
+                                return {
+                                    "id": result.item.value, // 子ノードのID
+                                    "parent": result.parent.value === `http://www.wikidata.org/entity/${root}` ? `http://www.wikidata.org/entity/${root}` : result.parent.value,
+                                    "text": result.itemLabel.value, // 子ノードのラベル
+                                    "url": result.item.value // 子ノードのURL
+                                };
+                            }));   
+
+                        // データ生成終了時間
+                        const dataGeneratedTime = performance.now();
+
+                        // ノード数を計算
+                        const nodeCount = treeData.length;
+
+                        // jsTreeの初期化
+                        $('#tree').jstree('destroy').empty(); // 既存のツリーをクリアして再初期化
+                        $('#tree').jstree({
+                            'core': {
+                                'data': treeData
+                            }
+                        });
+
+                        // ツリー描画完了を待機
+                        $('#tree').on("ready.jstree", function () {
+                            const endTime = performance.now();
+                            const dataElapsedTime = (dataGeneratedTime - startTime).toFixed(2);
+                            const guiElapsedTime = (endTime - dataGeneratedTime).toFixed(2);
+                            $('#timeDisplay').html(`<br>
+                                Time for generation: ${dataElapsedTime} ms<br>
+                                Time for dorawing: ${guiElapsedTime} ms<br>
+                                The number of nodes: ${nodeCount}
+                            `);
+                        });
+
+                        // ノードが選択されたときにURLを開く
+                        $('#tree').on("select_node.jstree", function (e, data) {
+                            const nodeUrl = data.node.original.url;
+                            if (nodeUrl) {
+                                window.open(nodeUrl, '_blank');  // 新しいタブで開く
+                            }
+                        });
+
+                    }).fail(function() {
+                        $('#timeDisplay').text('ツリー生成に失敗しました。');
+                    });
+                }).fail(function() {
+                    $('#timeDisplay').text('ルートラベルの取得に失敗しました。');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
