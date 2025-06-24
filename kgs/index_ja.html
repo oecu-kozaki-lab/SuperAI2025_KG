@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="X-UA-Compatible" content="ie=edge">
-<title>Full-text Search in Wikidata</title>
+<title>Wikidataの全体検索</title>
 
 <link rel="stylesheet" href="style.css">
 <script src="KGSearch.js"></script>     <!-- KG検索用のライブラリ読み込み -->
@@ -28,13 +28,6 @@ async function makeQuery(){
 	let query = document.getElementById('query_area').value;
     const resultArea = document.getElementById('result_div');
 
-    if(document.getElementById('LangTh').checked){
-        query = query.replace("en,th,ja","th,en,ja");
-    }
-    else if(document.getElementById('LangJa').checked){
-        query = query.replace("en,th,ja","ja,en,th");
-    }
-
     if(detailsType=="iframe"){
         const delailsArea = document.getElementById('details_div');
         delailsArea.innerHTML='<iframe src="" name="details"style="width: 400px; height: 80hv;"></iframe>';
@@ -44,7 +37,7 @@ async function makeQuery(){
     document.getElementById('query_area2').value = query;
 
     //SPARQLクエリの実行
-    dispLoading("Searching...");			
+    dispLoading("検索中...");			
 	const resultData = await sendSPARQLQuery(endpoint, query);
     removeLoading();
 
@@ -57,58 +50,53 @@ async function makeQuery(){
 
 <body>
 <header id="head" >
-	<h1>Search System Using Wikidata</h1>
+	<h1>Wikidataを用いた検索システム</h1>
 </header>
 
 <!-- 検索条件設定の領域 -->
 <div id="menu" class="container">
 	<div style="margin-top:4px;">
-        <b>Wikidata Search</b><br>
+        <b>Wikidata全体</b>の検索<br>
 		<input id="LABEL" type="text" value="" size="40"/>         
-        <input type="button" id="send" value="Execute Search" style="margin-top:8px; "><br>
+        <input type="button" id="send" value="検索の実行" style="margin-top:8px; "><br>
 	<hr>
-        <input type="button" id="showQueryCond" value="▼Advanced Search Options">
-        <input type="button" id="hideQueryCond" value="△Hide Advanced Options" style="display:none">
+        <input type="button" id="showQueryCond" value="▼詳細検索条件">
+        <input type="button" id="hideQueryCond" value="△詳細検索条件" style="display:none">
         <div id="QueryCond_div" style="display:none">
             <div>
-            <b>Language</b>:<br>
-                <label><input type="radio" id="LangEn" name="langOpt" value="en,th,ja"checked>English</label>
-                <label><input type="radio" id="LangTh" name="langOpt" value="th,en,ja" >Thai</label>
-                <label><input type="radio" id="LangJa" name="langOpt" value="ja,en,th">Japanese</label>
-                <br>
-            <b>Label Search Settings</b>:<br>
-                <label><input type="radio" id="LabelFull" name="labelType" value="full">Exact Match</label>
-                <label><input type="radio" id="LabelForward" name="labelType" value="forward" checked>Forward Match</label>
-                <label><input type="radio" id="LabelAmbi" name="labelType" value="ambi">Fuzzy Match</label>
+            <b>ラベルの検索設定</b>:<br>
+                <label><input type="radio" id="LabelFull" name="labelType" value="full">完全一致</label>
+                <label><input type="radio" id="LabelForward" name="labelType" value="forward" checked>前方一致</label>
+                <label><input type="radio" id="LabelAmbi" name="labelType" value="ambi">あいまい検索</label>
                 <!--「部分一致」はSPARQLクエリを利用するため処理が重く、
-                    「Entire Wikidata」を対象とするとタイムアウトとなるので使用しない。（検索対象を絞ると利用可） -->
+                    「Wikidata全体」を対象とするとタイムアウトとなるので使用しない。（検索対象を絞ると利用可） -->
                 <!--<label><input type="radio" id="LabelPart" name="labelType" value="part">部分一致</label>-->
             </div>
             <div id="search_cond_div"></div>
             <hr>
-            <input type="button" id="dispQuery" value="▼Show Query">
-            <input type="button" id="hideQuery"  value="△Hide Query" style="display:none">
+            <input type="button" id="dispQuery" value="▼クエリの表示">
+            <input type="button" id="hideQuery"  value="△クエリの非表示" style="display:none">
         </div>
     </div>
     <div id="query" style="display:none">
-        <b>Search Item Settings</b>:<br>
+        <b>検索項目設定</b>:<br>
         <div id="search_prop_div"></div>
-        <b>Configuration File</b>:<br>
+        <b>設定用ファイル</b>:<br>
         <textarea id="settings_area" class="t_area" rows="10" ></textarea><br>
-        <b>Query Before Replacement</b>:<br>
+        <b>置き換え前のクエリ</b>:<br>
 <textarea id="query_area" class="t_area" rows="10">
 select DISTINCT ?item ?itemLabel
 where{
-    SERVICE wikibase:label { bd:serviceParam wikibase:language "en,th,ja". }
+    SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,th,ja". }
 }ORDER BY ?itemLabel
 LIMIT 50		
 </textarea>
         <br>
-        <b>Query After Replacement</b>:<input type="button" value="Run SPARQL Query on Wikidata" 
+        <b>置き換え後のクエリ</b>:<input type="button" value="WikidataでSPARQL検索" 
         onclick="openSPARQLendpoint('https://query.wikidata.org#',
                 document.getElementById('query_area2').value)"><br>
         <textarea id="query_area2" class="t_area" rows="10" ></textarea><br>
-        <b>SPARQL Query Results (JSON Format)</b>:<br>
+        <b>クエリ実行結果の戻り値(JSON形式）</b>:<br>
         <textarea id="resjson_area"  class="t_area" rows="10" ></textarea>
         <!-- <br><input type="button" id="html-output" value="HTMLの出力"> -->
     </div>
@@ -118,7 +106,7 @@ LIMIT 50
 <div id="result_box" style=" display: none;  ">
 	<div>
         <div id="result_div"  class="result_div" > </div>
-        <input type="button" id="cont" value="Search More" style=" display: none;" >
+        <input type="button" id="cont" value="続きを検索" style=" display: none;" >
     </div>
 	<!-- 詳細表示画面の領域 -->
 	<div id="details_div" ></div>
