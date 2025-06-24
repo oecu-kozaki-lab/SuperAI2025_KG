@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<!-- saved from url=(0058)https://oecu-kozaki-lab.github.io/AnimalLinks/jp-link.html -->
+<html lang="ja">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <title>Bubble Chart</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script src="d3.v4.min.js"></script>
+    <script src="KGSearch.js"></script>
+    <script src="suggest.js"></script>
+    <script src="con_list.js"></script>
+
+    <script>
+        // wondowのonloadイベントでSuggestを生成
+        // (listは、list.js内で定義している)
+        var start1 = function () { new Suggest.Local("INPUT1", "suggest1", list, { dispMax: 30, highlight: true }); };
+        window.addEventListener ?
+            window.addEventListener('load', start1, false) :
+            window.attachEvent('onload', start1);
+    </script>
+
+    <script>
+        // wondowのonloadイベントでSuggestを生成
+        // (listは、list.js内で定義している)
+        var start2 = function () { new Suggest.Local("INPUT3", "suggest2", list, { dispMax: 30, highlight: true }); };
+        window.addEventListener ?
+            window.addEventListener('load', start2, false) :
+            window.attachEvent('onload', start2);
+    </script>
+
+    <style type="text/css">
+        <!--
+        .pos {
+            position: absolute;
+            top: 2%;
+            right: 2%;
+        }
+        -->
+    </style>
+
+
+    <style type="text/css">
+        <!--
+        #suggest1,
+        #suggest2 {
+            margin: 10px auto;
+            position: absolute;
+            background-color: #FFFFFF;
+            border: 1px solid #CCCCFF;
+            width: 400px;
+            height: 200px;
+            overflow: auto;
+        }
+
+        #suggest1 div,
+        #suggest2 div {
+            margin: 10px auto;
+            padding: 1px;
+            display: block;
+            width: 400px;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        #suggest1 div.select,
+        #suggest2 div.select {
+            color: #FFFFFF;
+            background-color: #3366FF;
+        }
+
+        #suggest1 div.over,
+        #suggest2 div.over {
+            background-color: #99CCFF;
+        }
+
+        #suggest1 strong,
+        #suggest2 strong {
+            font-weight: bold;
+        }
+        -->
+    </style>
+</head>
+
+<body>
+    <script src="dbp-ont.js"></script>
+    <script language="javascript" type="text/javascript">
+
+        var Q = 0;
+        let dataset = [];
+
+        window.addEventListener('load', async () => {
+
+            const sendButton1 = document.getElementById('send1');
+            //検索実行ボタンで実行する処理
+            sendButton1.addEventListener('click', async () => {
+                makeQuery1('owl:Thing');
+                const resultArea = document.getElementById('result_div');
+                resultArea.innerHTML = "";
+                const resultArea1 = document.getElementById('result_div1');
+                resultArea1.innerHTML = "";
+                Q = 1;
+            }, false);
+
+            const sendButton2 = document.getElementById('send2');
+            //共通の検索実行ボタンで実行する処理
+            sendButton2.addEventListener('click', async () => {
+                makeQuery3('owl:Thing');
+                const resultArea = document.getElementById('result_div');
+                resultArea.innerHTML = "";
+                const resultArea1 = document.getElementById('result_div1');
+                resultArea1.innerHTML = "";
+                Q = 2;
+            }, false);
+
+        }, false);
+
+
+        //SPARQLクエリを実行する
+        async function makeQuery1(dboc1, n1 = 0, jpname1) {
+            //SPARQLエンドポイントの指定
+            //let endpoint = "https://ja.dbpedia.org/sparql";
+            let endpoint = "https://lod.hozo.jp/kz-agraph/DBpedia2016_RDF";
+
+            console.log(jpname1);
+            if (n1 == 1) {
+                const resultArea1 = document.getElementById('result_div');
+                resultArea1.innerHTML = "";
+                const resultArea2 = document.getElementById('result_div1');
+                resultArea2.innerHTML = "";
+                resultArea2.innerHTML += "/" + "<a href=" + "javascript:makeQuery1('" + dboc1 + "'," + 1 + ");" + ">" + jpname1 + "</a>";
+            }
+
+            let keys = await dboClass(dboc1);
+
+            //SPARQLクエリの取得
+            let Query = document.getElementById('query1').value;
+
+            const InputText = document.getElementById('INPUT1').value;
+            Query = Query.replace('#INPUT1#', InputText)
+                .replace('#inputClass#', keys);
+
+            //SPARQLクエリの実行処理	
+            dispLoading("検索中...");//検索中の画像表示	
+            const resultData = await sendSPARQLQuery(endpoint, Query);//SPARQLクエリの実行
+            removeLoading();//検索中の画像を削除
+
+            //SPARQLクエリの実行結果の表示処理
+            document.getElementById('resjson_area').value = JSON.stringify(resultData, null, '  ');
+
+            const resultArea = document.getElementById('result_div');
+            showResult(resultData, resultArea); //クエリ結果の表示
+
+            const MAKEQUERY = makeQuery2;
+            showGraph(MAKEQUERY);
+            //resultArea.innerHTML = mesText;//結果を表示する領域のHTMLを書き換える
+        }
+
+
+        async function makeQuery2() {
+            //let endpoint = "https://ja.dbpedia.org/sparql";
+            let endpoint = "https://lod.hozo.jp/kz-agraph/DBpedia2016_RDF";
+            const resultArea = document.getElementById('result_div');
+            let Query = document.getElementById('query2').value;
+
+            //入力に応じてSPARQLクエリを書き換える（書き方のサンプル）
+            const InputText1 = document.getElementById('INPUT1').value;
+            const InputText2 = document.getElementById('INPUT2').value;
+            console.log(InputText2);
+            Query = Query.replace('#INPUT1#', InputText1)
+                .replace('#INPUT2#', InputText2);
+
+            //SPARQLクエリの実行
+            //resultArea.innerHTML = "";
+            //document.getElementById('result_box').style.display="flex";
+
+            dispLoading("検索中...");
+            const resultData = await sendSPARQLQuery(endpoint, Query);
+            removeLoading();
+
+            document.getElementById('resjson_area').value = JSON.stringify(resultData, null, '  ');
+
+            showResult2(resultData, resultArea); //クエリ結果の表示
+
+        }
+
+
+        async function makeQuery3(dboc2, n2 = 0, jpname2) {
+            //SPARQLエンドポイントの指定
+            //let endpoint = "https://ja.dbpedia.org/sparql";
+            let endpoint = "https://lod.hozo.jp/kz-agraph/DBpedia2016_RDF";
+
+            if (n2 == 1) {
+                const resultArea1 = document.getElementById('result_div');
+                resultArea1.innerHTML = "";
+                const resultArea2 = document.getElementById('result_div1');
+                resultArea2.innerHTML = "";
+                resultArea2.innerHTML += "/" + "<a href=" + "javascript:makeQuery1('" + dboc1 + "'," + 1 + ");" + ">" + jpname2 + "</a>";
+            }
+
+            let keys = await dboClass(dboc2);
+
+            //SPARQLクエリの取得
+            let Query = document.getElementById('query3').value;
+
+            const InputText1 = document.getElementById('INPUT1').value;
+            const InputText2 = document.getElementById('INPUT3').value;
+
+            Query = Query.replace('#INPUT1#', InputText1)
+                .replace('#INPUT2#', InputText2)
+                .replace('#inputClass#', keys);
+
+            //SPARQLクエリの実行処理	
+            dispLoading("検索中...");//検索中の画像表示	
+            const resultData = await sendSPARQLQuery(endpoint, Query);//SPARQLクエリの実行
+            removeLoading();//検索中の画像を削除
+
+            //SPARQLクエリの実行結果の表示処理
+            document.getElementById('resjson_area').value = JSON.stringify(resultData, null, '  ');
+
+            const resultArea = document.getElementById('result_div');
+            showResult(resultData, resultArea); //クエリ結果の表示
+
+            const MAKEQUERY = makeQuery4;
+            showGraph(MAKEQUERY);
+            //resultArea.innerHTML = mesText;//結果を表示する領域のHTMLを書き換える
+        }
+
+
+        async function makeQuery4() {
+            //let endpoint = "https://ja.dbpedia.org/sparql";
+            let endpoint = "https://lod.hozo.jp/kz-agraph/DBpedia2016_RDF";
+            const resultArea = document.getElementById('result_div');
+            let Query = document.getElementById('query4').value;
+
+            //入力に応じてSPARQLクエリを書き換える（書き方のサンプル）
+            const InputText1 = document.getElementById('INPUT1').value;
+            const InputText2 = document.getElementById('INPUT3').value;
+            const InputText3 = document.getElementById('INPUT4').value;
+            Query = Query.replace('#INPUT1#', InputText1)
+                .replace('#INPUT2#', InputText2)
+                .replace('#INPUT3#', InputText3);
+
+            //SPARQLクエリの実行
+            //resultArea.innerHTML = "";
+            //document.getElementById('result_box').style.display="flex";
+
+            dispLoading("検索中...");
+            const resultData = await sendSPARQLQuery(endpoint, Query);
+            removeLoading();
+
+            document.getElementById('resjson_area').value = JSON.stringify(resultData, null, '  ');
+
+            showResult2(resultData, resultArea); //クエリ結果の表示
+
+        }
+
+
+        async function getSubClass(category) {
+            //SPARQLエンドポイントの指定
+            let endpoint = "https://dbpedia.org/sparql";
+
+            //SPARQLクエリの取得
+            let Query = document.getElementById('query5').value;
+            Query = Query.replace('#INPUT#', category);
+
+            //SPARQLクエリの実行処理	
+            dispLoading("検索中...");//検索中の画像表示	
+            const resultData = await sendSPARQLQuery(endpoint, Query);//SPARQLクエリの実行
+            removeLoading();//検索中の画像を削除
+
+            return resultData;
+        }
+
+
+        async function dboClass(cate) {
+            var SubClass = await getSubClass(cate);
+            var dbo = [];
+            let text = "";
+
+            for (let i = 0; i < SubClass['results']['bindings'].length; i++) {
+                dbo[i] = SubClass['results']['bindings'][i]['t']['value'].replace('http://dbpedia.org/ontology/', 'dbo:');
+            }
+
+            for (let i = 0; i < dbo.length; i++) {
+                text += dbo[i];
+                text += " ";
+            }
+            return text;
+        }
+
+
+        function showResult(resultData, resultArea) {
+            const keys = resultData.head.vars; //戻り値の変数一覧を格納する配列
+            const data = resultData.results.bindings;//戻り値のデータを格納する配列（JSON）
+
+            dataset = {
+                "children": []
+            };
+
+            let mesText = '';//表示内容を作成するための変数	
+            for (let i = 0; i < data.length; i++) {
+                let enLBL = data[i]['t'].value.replace("http://dbpedia.org/ontology/", "");
+                let jpLBL = getDbpJp(enLBL);
+
+                let val = {
+                    "Name": jpLBL,
+                    "enName": enLBL,
+                    "Count": data[i]['c'].value
+                };
+                dataset.children.push(val);
+            }
+            //console.log(dataset);
+            /*
+                dataset = {
+                        "children": [{"Name":"Species","Count":138},
+                            {"Name":"Work","Count":120},
+                            {"Name":"Anime","Count":80},
+                          ]
+                    };*/
+
+        }
+
+
+        function getDbpJp(enLBL) {
+            for (let i = 0; i < dbp.length; i++) {
+                if (dbp[i].En == enLBL) {
+                    return '' + dbp[i].Jp;
+                }
+            }
+            return enLBL;
+        }
+
+        function ImageUp(qid) {
+            window.open("details.html?key=" + qid, "window1", "width=550,height=700,left=1500,scrollbars=1");
+        }
+
+        function showResult2(resultData, resultArea) {
+            //クエリ結果のJSONデータを「ヘッダ部(keys)」と「値(data)」に分けて処理する
+
+            const keys = resultData.head.vars;
+            const data = resultData.results.bindings;
+
+            removeSearchIng();
+
+            let mesText = "";
+            mesText += '<UL class="right">';   //箇条書き
+
+            for (let i = 0; i < data.length; i++) {
+                const textid = data[i]['s'].value.replace('http://wikidata.dbpedia.org/resource/', "");
+                mesText += "<LI><a href=" + "javascript:ImageUp('" + textid + "');" + ">" + data[i]['o'].value.replace('http://ja.dbpedia.org/resource/', '') + "</a></LI>";
+            }
+
+            mesText += '</UL>';
+
+            resultArea.innerHTML += mesText;
+
+            //console.log(mesText);
+
+        }
+
+        function showGraph(makequery) {
+            d3.select("svg").remove();
+
+            var tooltip = d3.select("body").append("div").attr("class", "tooltip");
+            var diameter = 600;
+            var color = d3.scaleOrdinal(d3.schemeCategory20);
+
+            var bubble = d3.pack(dataset)       // d3.pack()の関数を利用
+                .size([diameter, diameter])
+                .padding(1.5);                  //バブル間の間隔
+
+            var svg = d3.select("#svg_div")//d3.select("body")
+                .append("svg")
+                .attr("width", diameter)
+                .attr("height", diameter)
+                .attr("class", "bubble");
+
+            //描画するデータにバブルの大きさ（半径）要素を指定し、最大値、合計値などを抽出します
+            var nodes = d3.hierarchy(dataset)               //d3.hierarchy関数の使用
+                .sum(function (d) { return d.Count; });      // バブルの半径： val要素使用
+
+            var node = svg.selectAll(".node")
+                .data(bubble(nodes).descendants())
+                .enter()
+                .filter(function (d) {
+                    return !d.children
+                })
+                .append("g")
+                .attr("class", "node")
+                .attr("transform", function (d) {
+                    return "translate(" + d.x + "," + d.y + ")";
+                });
+
+
+            node.append("circle")
+                .attr("r", function (d) {
+                    return d.r;
+                })
+                .style("fill", function (d, i) {
+                    return color(i);
+                })
+
+                .on("mouseover", function (d) {
+                    tooltip
+                        .style("visibility", "visible")
+                        .html(d.data.Name);
+                })
+                .on("mousemove", function (d) {
+                    tooltip
+                        .style("top", (d3.event.pageY - 20) + "px")
+                        .style("left", (d3.event.pageX + 10) + "px");
+                })
+                .on("mouseout", function (d) {
+                    tooltip.style("visibility", "hidden");
+                })
+
+                .on("click", async function (d) {
+                    //console.log(d);
+                    //alert("on click get data " + d.data.Name);
+
+                    const resultArea = document.getElementById('result_div');   //表示場所を作る
+                    const resultArea1 = document.getElementById('result_div1');
+
+                    resultArea.innerHTML = "選択されたのは " + d.data.Name;
+
+                    document.getElementById("INPUT2").value = d.data.enName;
+                    document.getElementById("INPUT4").value = d.data.enName;
+
+                    await makequery();
+
+                    //gname = d.data.Name;
+                    var dname = 'dbo:' + d.data.enName;
+                    if (Q == 1) {
+                        await makeQuery1(dname);
+                        resultArea1.innerHTML += "/" + "<a href=" + "javascript:makeQuery1('" + dname + "'," + 1 + ",'" + d.data.Name + "');" + ">" + d.data.Name + "</a>";
+                    }
+                    if (Q == 2) {
+                        await makeQuery3(dname);
+                        resultArea1.innerHTML += "/" + "<a href=" + "javascript:makeQuery3('" + dname + "'," + 1 + ",'" + d.data.Name + "');" + ">" + d.data.Name + "</a>";
+                    }
+
+                    //console.log(nodes);
+
+                });
+
+            node.append("text")
+                .attr("dy", ".2em")
+                .style("text-anchor", "middle")
+                .text(function (d) {
+                    return d.data.Name.substring(0, d.r / 3);
+                })
+                .attr("font-family", "sans-serif")
+                .attr("font-size", function (d) {
+                    return d.r / 5;
+                })
+                .attr("fill", "white");
+
+            node.append("text")
+                .attr("dy", "1.3em")
+                .style("text-anchor", "middle")
+                .text(function (d) {
+                    return d.data.Count;
+                })
+                .attr("font-family", "Gill Sans", "Gill Sans MT")
+                .attr("font-size", function (d) {
+                    return d.r / 5;
+                })
+                .attr("fill", "white");
+
+            d3.selectAll("dataset").on("click", function (data, idx, elem) {
+                var msg = "data:" + data.value + " idx:" + idx + " elem:" + elem + " d3.event.pageX: " + d3.event.pageX + " d3.mouse: " + d3.mouse(this);
+                alert(msg);
+            });
+
+        }
+
+    </script>
+    <!--<font size="6">
+        <a href="https://oecu-kozaki-lab.github.io/AnimalLinks/en-link.html">英語版</a>
+    </font>-->
+    <header>
+        <font size="4">
+            <h1>動物と文化の関係性の検索</h1>
+        </font>
+    </header>
+
+    <!-- 検索条件設定の領域 -->
+    <div id="query" class="container">
+        <div id="menu" class="container"></div>
+        <div style="margin-top:4px;">
+            <div text-align:right="">
+                <img src="test.jpg" width="200" height="125" alt="写真" align="right" class="pos">
+            </div>
+            動物名１：<input id="INPUT1" type="text" value="" autocomplete="off" size="20">
+            <input type="button" id="send1" value="検索の実行" style="margin-top:8px; ">
+            <input id="INPUT2" type="text" value="Work" autocomplete="off" size="20" style="display:none">
+            <!-- 補完候補を表示するエリア -->
+            <div id="suggest1" style="display:none;"></div>
+            <br>
+
+            動物名２：<input id="INPUT3" type="text" value="" autocomplete="off" size="20">
+            <input type="button" id="send2" value="共通の検索の実行" style="margin-top:8px; ">
+            <input id="INPUT4" type="text" value="Work" autocomplete="off" size="20" style="display:none">
+            <!-- 補完候補を表示するエリア -->
+            <div id="suggest2" style="display:none;"></div>
+            <hr>
+
+        </div>
+        <br><br>
+
+        <textarea id="query1" class="t_area" rows="10" style="display:none">
+            select ?t (count(DISTINCT ?o) AS ?c)
+            where {
+            VALUES ?t  { #inputClass# } 
+            ?o ?p &lt;http://ja.dbpedia.org/resource/#INPUT1#&gt;.
+            ?o a ?t.          
+            }GROUP BY ?t
+            ORDER BY DESC(?c)
+        </textarea>
+
+        <div id="query_area1" style="display:none">
+            <textarea id="query2" class="t_area" rows="10" style="display:none">
+            select distinct  ?t ?o ?s
+	        where { 
+            ?o ?p &lt;http://ja.dbpedia.org/resource/#INPUT1#&gt; .
+            ?o a ?t . 
+            ?s owl:sameAs ?o .
+            FILTER(regex(str(?t),"http://dbpedia.org/ontology/"))
+            FILTER(regex(str(?t),"http://dbpedia.org/ontology/#INPUT2#"))
+            }   
+        </textarea>
+            <br>
+            <b></b>
+            <br>
+            <textarea id="resjson_area" class="t_area" rows="10" style="display:none"></textarea>
+        </div>
+
+        <textarea id="query3" class="t_area" rows="10" style="display:none">
+            select ?t (count(DISTINCT ?o) AS ?c)
+            where { 
+            VALUES ?t  { #inputClass# }
+            ?o ?p &lt;http://ja.dbpedia.org/resource/#INPUT1#&gt;  .
+            ?o ?p2 &lt;http://ja.dbpedia.org/resource/#INPUT2#&gt;  .
+            ?o a ?t. 
+            }GROUP BY ?t
+            ORDER BY DESC(?c)
+        </textarea>
+
+        <div id="query_area2" style="display:none">
+            <textarea id="query4" class="t_area" rows="10" style="display:none">
+            select distinct  ?t ?o ?s
+            where { 
+            ?o ?p &lt;http://ja.dbpedia.org/resource/#INPUT1#&gt; .
+            ?o ?p2 &lt;http://ja.dbpedia.org/resource/#INPUT2#&gt; .
+            ?o a ?t. 
+            ?s owl:sameAs ?o .
+            FILTER(regex(str(?t),"http://dbpedia.org/ontology/"))
+            FILTER(regex(str(?t),"http://dbpedia.org/ontology/#INPUT3#"))
+            }   
+        </textarea>
+            <br>
+            <b></b>
+            <br>
+            <textarea id="resjson_area" class="t_area" rows="10" style="display:none"></textarea>
+        </div>
+
+        <textarea id="query5" class="t_area" rows="10" style="display:none">
+            select DISTINCT ?t
+            where {
+            OPTIONAL{?t rdfs:subClassOf #INPUT#.}
+            FILTER(regex(str(?t),"http://dbpedia.org/ontology/"))
+            }
+        </textarea>
+
+        <!-- 結果表示用の領域 -->
+        <div id="svg_div" class="container" style="flex: 1; display:inline-block;"></div>
+        <div id="result_div" class="container" style="flex: 1;  float:right; max-width:100%"></div>
+        <div id="result_div1" class="container" style="flex: 1;  float:left; max-width:100%"></div>
+        <div id="result_div2" class="container"></div>
+    </div>
+
+
+</body>
+
+</html>

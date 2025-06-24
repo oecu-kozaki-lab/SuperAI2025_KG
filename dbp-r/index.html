@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Bubble Chart</title>
+
+  <link rel="stylesheet" href="style.css">
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="KGSearch.js"></script>
+  <style type="text/css"><!--
+    .pos { position:absolute; top:2%; right:2%; }
+    --></style>
+
+
+  <style type="text/css">
+    /* No style rules here yet */
+    </style>
+</head>
+
+<body>
+
+<script src="dbp-ont.js"></script>
+   
+<script>
+let dataset = [];
+
+window.addEventListener('load', async () => {
+
+    const sendButton = document.getElementById('send');
+    //検索実行ボタンで実行する処理
+    sendButton.addEventListener('click', async () => {
+        makeQuery();
+    }, false);
+    const sendButton2 = document.getElementById('send2');
+    //検索実行ボタンで実行する処理
+    sendButton2.addEventListener('click', async () => {
+        makeQuery2();
+    }, false);
+
+
+}, false);
+
+
+//SPARQLクエリを実行する
+async function makeQuery(){
+    //SPARQLエンドポイントの指定
+    let endpoint = "https://dbpedia.org/sparql";
+    //let endpoint = "http://kozaki-lab.osakac.ac.jp/agraph/DBpedia2016_RDF";
+
+    //SPARQLクエリの取得
+    let query = document.getElementById('query_area').value;
+    
+
+    const InputText = document.getElementById('INPUT').value;
+    query = query.replace('#INPUT#',InputText);             //#INPUT#
+
+    //SPARQLクエリの実行処理	
+    dispLoading("検索中...");//検索中の画像表示	
+    const resultData = await sendSPARQLQuery(endpoint, query);//SPARQLクエリの実行
+    removeLoading();//検索中の画像を削除
+
+    //SPARQLクエリの実行結果の表示処理
+    document.getElementById('resjson_area').value = JSON.stringify(resultData,null,'  ');
+
+    const resultArea = document.getElementById('result_div');	
+    showResult(resultData,resultArea); //クエリ結果の表示
+
+    showGraph();
+    //resultArea.innerHTML = mesText;//結果を表示する領域のHTMLを書き換える
+}
+
+async function makeQuery2(){
+	let endpoint = "https://dbpedia.org/sparql";
+    const resultArea = document.getElementById('result_div');
+	let query2 = document.getElementById('2query_area').value;
+
+    //入力に応じてSPARQLクエリを書き換える（書き方のサンプル）
+    const InputText2 = document.getElementById('INPUT').value;
+    const InputText3 = document.getElementById('INPUT3').value;
+    query2 = query2.replace('#INPUT2#',InputText2)
+                   .replace('#INPUT3#',InputText3);
+
+
+    //SPARQLクエリの実行
+	resultArea.innerHTML="";
+	//document.getElementById('result_box').style.display="flex";
+	
+	dispLoading("検索中...");			
+	const resultData = await sendSPARQLQuery(endpoint, query2);
+    removeLoading();
+    
+	document.getElementById('resjson_area').value = JSON.stringify(resultData,null,'  ');
+
+    showResult2(resultData,resultArea); //クエリ結果の表示
+
+}
+
+
+function showResult(resultData,resultArea){
+    const keys = resultData.head.vars; //戻り値の変数一覧を格納する配列
+    const data = resultData.results.bindings;//戻り値のデータを格納する配列（JSON）
+
+    dataset = {
+            "children":[]
+        };
+
+    let mesText ='';//表示内容を作成するための変数	
+    for (let i=0; i<data.length;i++){
+        let enLBL = data[i]['t'].value.replace("http://dbpedia.org/ontology/","");
+        let jpLBL = getDbpJp(enLBL);
+
+        let val = {
+            "Name": enLBL,  
+            "enName": enLBL,  
+            "Count": data[i]['c'].value };
+        dataset.children.push(val);
+    }
+/*
+    dataset = {
+            "children": [{"Name":"Species","Count":138},
+                {"Name":"Work","Count":120},
+                {"Name":"Anime","Count":80},
+              ]
+        };*/
+
+
+}
+
+function getDbpJp(enLBL){
+    for(let i=0 ;i<dbp.length;i++){
+        if(dbp[i].En == enLBL){
+            return ''+dbp[i].Jp;
+        }
+    }
+    return enLBL;
+}
+
+function showResult2(resultData,resultArea){
+//クエリ結果のJSONデータを「ヘッダ部(keys)」と「値(data)」に分けて処理する
+                
+                const keys = resultData.head.vars;
+                const data = resultData.results.bindings;
+
+                removeSearchIng();
+
+              
+                let mesText = "";
+
+                mesText +='<UL class="right">';   //箇条書き
+                
+
+                for(let i=0; i<data.length;i++){
+                    mesText += '<LI><a href="'+data[i]['w'].value+'" target="_blank">'+  
+                            data[i]['o'].value.replace('http://dbpedia.org/resource/','') +"</a></LI>";  //<a href>はアドレスにする
+                }
+
+                mesText +='</UL>';
+
+                resultArea.innerHTML = mesText;
+
+                console.log(mesText);
+              
+            }
+
+
+
+
+function showGraph(){
+    d3.select("svg").remove();
+
+        var tooltip = d3.select("body").append("div").attr("class", "tooltip");
+        var diameter = 600;
+        var color = d3.scaleOrdinal(d3.schemeCategory20);
+
+        var bubble = d3.pack(dataset)       // d3.pack()の関数を利用
+            .size([diameter, diameter])
+            .padding(1.5);                  //バブル間の間隔
+           
+        var svg = d3.select("#svg_div")//d3.select("body")
+            .append("svg")
+            .attr("width", diameter)
+            .attr("height", diameter)
+            .attr("class", "bubble");
+
+//描画するデータにバブルの大きさ（半径）要素を指定し、最大値、合計値などを抽出します
+        var nodes = d3.hierarchy(dataset)               //d3.hierarchy関数の使用
+            .sum(function(d) { return d.Count; });      // バブルの半径： val要素使用
+
+        var node = svg.selectAll(".node")
+            .data(bubble(nodes).descendants())
+            .enter()
+            .filter(function(d){
+                return  !d.children
+            })
+            .append("g")
+            .attr("class", "node")
+            .attr("transform", function(d) {
+                return "translate(" + d.x + "," + d.y + ")";
+            });
+
+
+        node.append("circle")
+            .attr("r", function(d) {
+                return d.r;
+            })
+            .style("fill", function(d,i) {
+                return color(i);
+            })
+
+            .on("mouseover", function(d) {
+                tooltip
+                .style("visibility", "visible")
+                .html(  d.data.Name);
+            })
+            .on("mousemove", function(d) {
+                tooltip
+                .style("top", (d3.event.pageY - 20) + "px")
+                .style("left", (d3.event.pageX + 10) + "px");
+            })
+            .on("mouseout", function(d) {
+                tooltip.style("visibility", "hidden");
+            })
+
+            .on("click", function(d) {
+                console.log(d);
+                //alert("on click get data " + d.data.Name);
+
+                const resultArea = document.getElementById('result_div');   //表示場所を作る
+                
+                resultArea.innerHTML="選択されたのは " + d.data.Name;
+
+                document.getElementById("INPUT3").value = d.data.enName;
+                makeQuery2();
+
+
+
+            });
+
+
+
+
+        node.append("text")
+            .attr("dy", ".2em")
+            .style("text-anchor", "middle")
+            .text(function(d) {
+                return d.data.Name.substring(0, d.r / 3);
+            })
+            .attr("font-family", "sans-serif")
+            .attr("font-size", function(d){
+                return d.r/5;
+            })
+            .attr("fill", "white");
+
+        node.append("text")
+            .attr("dy", "1.3em")
+            .style("text-anchor", "middle")
+            .text(function(d) {
+                return d.data.Count;
+            })
+            .attr("font-family",  "Gill Sans", "Gill Sans MT")
+            .attr("font-size", function(d){
+                return d.r/5;
+            })
+            .attr("fill", "white");
+        
+    d3.selectAll("dataset").on("click",function(data,idx,elem){
+      var msg = "data:" + data.value + " idx:" + idx + " elem:" + elem + " d3.event.pageX: " + d3.event.pageX + " d3.mouse: " + d3.mouse(this) ;
+      alert(msg);
+    });
+
+}
+
+
+    </script>
+    <header>
+        <font size="4"><h1>Search Relationships in DBpedia</h1></font>      
+    </header>
+
+
+    <!-- 検索条件設定の領域 -->
+    <div id="query" class="container"> 
+    <div id="menu" class="container"></div>
+    <div style="margin-top:4px;">
+            <div text-align:right>
+                <img src="test.jpg" width="200" height="125"alt="写真"align="right"class="pos"> 
+            </div>    
+Keyword：<input id="INPUT" type="text" value="Elephant" autocomplete="off" size="20"/>
+            <input type="button" id="send" value="Serach" style="margin-top:8px; ">
+   
+            
+           
+                <!-- 動物名:<input id="INPUT2" type="text" value="ゾウ" autocomplete="off" size="20"/> -->
+                <input id="INPUT3" type="text" value="Work" autocomplete="off" size="20" style="display:none"/>
+                <!--<input type="button" id="send2" value="検索の実行" style="margin-top:8px; "><br>-->
+            <hr> 
+    
+        </div>
+    <br></br>
+            
+    <textarea id="query_area" class="t_area" rows="10"  style="display:none">
+    select distinct  ?t (count(?o) AS ?c)
+        where { 
+       ?o ?p <http://dbpedia.org/resource/#INPUT#>  .
+       ?o a ?t. 
+       FILTER(regex(str(?t),"dbpedia.org/ontology"))
+       }GROUP BY ?t
+       ORDER BY DESC(?c)
+</textarea>
+
+<div id="query2" style="display:none">
+<textarea id="2query_area" class="t_area" rows="10" style="display:none">
+ 
+	select distinct  ?t ?o ?w 
+	where { 
+   ?o ?p <http://dbpedia.org/resource/#INPUT2#> .
+   ?o a ?t. 
+   ?o foaf:isPrimaryTopicOf ?w
+   FILTER(regex(str(?t),"http://dbpedia.org/ontology/"))
+   FILTER(regex(str(?t),"http://dbpedia.org/ontology/#INPUT3#"))
+   }
+   
+</textarea>	
+<br>
+<b></b>
+<br>
+<textarea id="resjson_area"  class="t_area" rows="10"  style="display:none"></textarea>
+</div>
+
+<!-- 結果表示用の領域 -->
+<div id="svg_div"  class="container" style="flex: 1; display:inline-block;"></div>      
+<div id="result_div"  class="container" style="flex: 1;  float:right; max-width:100%"></div>
+</div>
+</body>
+
+</html>
